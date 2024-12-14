@@ -1,0 +1,4 @@
+site_name: All about profiling postgres
+site_url: https://TwilightTechie.github.io
+theme:
+  name: material
