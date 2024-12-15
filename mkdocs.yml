@@ -1,3 +1,4 @@
+yaml-language-server: $schema=https://twilighttechie.github.io/mkdocs-material/schema.json
 site_name: All about profiling postgres
 site_url: https://twilighttechie.github.io/
 theme:
