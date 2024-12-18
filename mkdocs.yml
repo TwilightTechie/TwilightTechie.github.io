@@ -1,6 +1,6 @@
 yaml-language-server: $schema=https://twilighttechie.github.io/mkdocs-material/schema.json
 site_name: All about profiling postgres
 site_url: https://twilighttechie.github.io/
-repo_url: https://github.com/TwilightTechie/TwilightTechie.github.io/tree/main
+repo_url: https://github.com/TwilightTechie/TwilightTechie.github.io/tree/main/site
 theme:
   name: material
