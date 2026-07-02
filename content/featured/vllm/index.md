@@ -4,6 +4,7 @@ title: 'vLLM Semantic Router'
 cover: './demo.png'
 github: 'https://github.com/TwilightTechie'
 external: 'https://github.com/vllm-project/vllm'
+cta: ''
 tech:
   - Python
   - vLLM
