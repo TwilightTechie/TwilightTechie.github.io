@@ -43,12 +43,10 @@ export default {
 
     tagsTitle: "Tags",
     tagsDesc: "All the tags used in posts.",
-  },
-  posts: {
+
     postsTitle: "Blog",
     postsDesc: "All the articles I've written.",
-  },
-  archives: {
+
     archivesTitle: "Archives",
     archivesDesc: "All the articles I've archived.",
 
