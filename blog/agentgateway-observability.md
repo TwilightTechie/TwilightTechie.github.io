@@ -1,3 +1,8 @@
+---
+title: I Almost Built a Grafana Stack—Then AgentGateway Shipped Everything I Needed
+date: 2026-07-03
+---
+
 *Part 4 of the Homelab AI Series — [Part 1](https://dev.to/anup_sharma_86fa94612fe3c/i-built-an-ai-that-decides-which-ai-to-talk-to-running-247-from-my-living-room-211p) | [Part 2](https://dev.to/anup_sharma_86fa94612fe3c/i-traced-personal-agents-source-code-inside-was-pi-and-it-dreams-at-3-am-o0f) | [Part 3](https://dev.to/anup_sharma_86fa94612fe3c/giving-agentgateway-a-semantic-brain-with-vllm-semantic-router-inside-my-homelab-542f)*
 
 Let me set the scene.
