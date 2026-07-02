@@ -1,6 +1,9 @@
 ---
 title: I Almost Built a Grafana Stack—Then AgentGateway Shipped Everything I Needed.
-date: 2026-07-03
+pubDatetime: 2026-07-03T00:00:00Z
+description: "I Almost Built a Grafana Stack—Then AgentGateway Shipped Everything I Needed."
+tags:
+  - blog
 ---
 
 *Part 4 of the Homelab AI Series — [Part 1](https://dev.to/anup_sharma_86fa94612fe3c/i-built-an-ai-that-decides-which-ai-to-talk-to-running-247-from-my-living-room-211p) | [Part 2](https://dev.to/anup_sharma_86fa94612fe3c/i-traced-personal-agents-source-code-inside-was-pi-and-it-dreams-at-3-am-o0f) | [Part 3](https://dev.to/anup_sharma_86fa94612fe3c/giving-agentgateway-a-semantic-brain-with-vllm-semantic-router-inside-my-homelab-542f)*
@@ -44,6 +47,10 @@ The team had just shipped a brand new built-in UI — complete with an Analytics
 
 I closed the `docker-compose.yaml`. I was never going to open it again.
 
+pubDatetime: 2026-07-03T00:00:00Z
+description: "I Almost Built a Grafana Stack—Then AgentGateway Shipped Everything I Needed."
+tags:
+  - blog
 ---
 
 ## Three Lines of YAML. That's It.
@@ -110,6 +117,10 @@ Look at the screenshot above. You can see real requests: `gemini-2.5-flash` call
 
 I can click into any row and see the full request detail — the exact prompt Pi sent and the exact response it got back. When Pi's 3 AM calendar job sends something weird, I can see the raw JSON. That was never possible before.
 
+pubDatetime: 2026-07-03T00:00:00Z
+description: "I Almost Built a Grafana Stack—Then AgentGateway Shipped Everything I Needed."
+tags:
+  - blog
 ---
 
 ## The Full Config
@@ -259,6 +270,10 @@ AgentGateway's built-in dashboard gives you every metric I care about — token 
 
 **Do not build an observability stack if you don't have to.**
 
+pubDatetime: 2026-07-03T00:00:00Z
+description: "I Almost Built a Grafana Stack—Then AgentGateway Shipped Everything I Needed."
+tags:
+  - blog
 ---
 
 ## The Numbers After One Week of Real Visibility
@@ -312,6 +327,10 @@ Pi (Personal Agent)
 
 The whole stack runs as a single binary (plus the SR container). Zero cloud spend on infrastructure. The Mac Mini was already sitting in my living room.
 
+pubDatetime: 2026-07-03T00:00:00Z
+description: "I Almost Built a Grafana Stack—Then AgentGateway Shipped Everything I Needed."
+tags:
+  - blog
 ---
 
 ## What's Next
@@ -330,6 +349,10 @@ If you're building agents — homelab or production — the combination of [Agen
 
 And it runs silently, 24/7, from my living room. 🏠
 
+pubDatetime: 2026-07-03T00:00:00Z
+description: "I Almost Built a Grafana Stack—Then AgentGateway Shipped Everything I Needed."
+tags:
+  - blog
 ---
 
 *Have questions about the setup? Drop them in the comments — I check daily. And if you've built something similar, I'd love to see how you've adapted it.*

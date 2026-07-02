@@ -1,6 +1,9 @@
 ---
 title: How Cassandra Compression Actually Works (Chunks, Offsets, and Reads)
-date: 2026-07-01
+pubDatetime: 2026-07-01T00:00:00Z
+description: "How Cassandra Compression Actually Works (Chunks, Offsets, and Reads)"
+tags:
+  - blog
 ---
 
 I got asked about Cassandra compression by someone recently and didn't do it justice on the spot. The questions were good ones: what does `chunk_length_in_kb` really control, what happens on a write, and on a read how does Cassandra know how many bytes to pull off disk before it can decompress anything? I work on a database with a Cassandra backend, but we forked Cassandra years ago, before table compression existed, and our data is local so we never leaned on it. So I went and read the actual mechanics. Here's the version I wish I'd had in my head.

@@ -1,6 +1,9 @@
 ---
 title: I Built an AI That Decides Which AI to Talk To — Running 24/7 From My Living Room
-date: 2026-06-10
+pubDatetime: 2026-06-10T00:00:00Z
+description: "I Built an AI That Decides Which AI to Talk To — Running 24/7 From My Living Room"
+tags:
+  - blog
 ---
 Last Saturday when I woke up, my AI agent reviewed 14 restaurant ratings in Indiranagar, updated a shared Google Sheet, signed a 20-page PDF I'd been ignoring for a week, and wrote a bash script to clean up my server logs.
 

@@ -1,6 +1,9 @@
 ---
 title: I Traced Personal Agent's Source Code. Inside Was Pi... And It Dreams at 3 AM.
-date: 2026-06-15
+pubDatetime: 2026-06-15T00:00:00Z
+description: "I Traced Personal Agent's Source Code. Inside Was Pi... And It Dreams at 3 AM."
+tags:
+  - blog
 ---
 
 *This is Part 2 of my homelab AI series. In [Part 1](https://dev.to/anup_sharma_86fa94612fe3c/i-built-an-ai-that-decides-which-ai-to-talk-to-running-247-from-my-living-room-211p), I built a system where one AI decides which AI to talk to. This time, I popped the hood on the agent itself — and what I found inside changed how I think about AI software.*
@@ -22,6 +25,10 @@ OpenClaw doesn't have its own agent engine. Buried inside it — embedded as an 
 
 And Pi might be the most elegant piece of AI software I've ever read.
 
+pubDatetime: 2026-06-15T00:00:00Z
+description: "I Traced Personal Agent's Source Code. Inside Was Pi... And It Dreams at 3 AM."
+tags:
+  - blog
 ---
 
 ## Wait, What is Pi?
@@ -93,6 +100,10 @@ OpenClaw is the vehicle. Pi is the engine.
 
 
 
+pubDatetime: 2026-06-15T00:00:00Z
+description: "I Traced Personal Agent's Source Code. Inside Was Pi... And It Dreams at 3 AM."
+tags:
+  - blog
 ---
 
 ## The Agent Loop: Where the Magic Happens
@@ -193,6 +204,10 @@ Why does this matter? Three reasons:
 
 
 
+pubDatetime: 2026-06-15T00:00:00Z
+description: "I Traced Personal Agent's Source Code. Inside Was Pi... And It Dreams at 3 AM."
+tags:
+  - blog
 ---
 
 ## Iterative Compaction: How Pi Remembers What Matters
@@ -271,6 +286,10 @@ I'm not going to pretend I wasn't a little unsettled the first time I realized m
 
 <add screenshot of MEMORY.md or DREAMS.md showing consolidated memories>
 
+pubDatetime: 2026-06-15T00:00:00Z
+description: "I Traced Personal Agent's Source Code. Inside Was Pi... And It Dreams at 3 AM."
+tags:
+  - blog
 ---
 
 ## The Extension System: How OpenClaw Bends Pi to Its Will
@@ -331,6 +350,10 @@ Linear chat history is a lie. Real problem-solving is branching. You try approac
 
 Instead of shipping a monolithic agent with every feature imaginable, Pi ships a tiny core with a powerful extension system. OpenClaw adds 129 extensions. My homelab setup is much simpler. Both work, because the core doesn't care what you bolt onto it.
 
+pubDatetime: 2026-06-15T00:00:00Z
+description: "I Traced Personal Agent's Source Code. Inside Was Pi... And It Dreams at 3 AM."
+tags:
+  - blog
 ---
 
 ## Setting This Up For Yourself
@@ -362,6 +385,10 @@ AgentGateway already emits OpenTelemetry traces for every LLM call. Pi tracks to
 
 Stay tuned.
 
+pubDatetime: 2026-06-15T00:00:00Z
+description: "I Traced Personal Agent's Source Code. Inside Was Pi... And It Dreams at 3 AM."
+tags:
+  - blog
 ---
 
 *If you made it this far — first of all, respect. Second, if you're building something similar or want to nerd out about agent architectures, hit me up. I live for this stuff.*

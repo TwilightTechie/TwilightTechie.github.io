@@ -1,6 +1,9 @@
 ---
 title: Giving AgentGateway a Semantic Brain with vLLM Semantic Router - Inside My Homelab
-date: 2026-06-22
+pubDatetime: 2026-06-22T00:00:00Z
+description: "Giving AgentGateway a Semantic Brain with vLLM Semantic Router - Inside My Homelab"
+tags:
+  - blog
 ---
 
 *Part 3 of the Homelab AI Series — [Part 1](https://dev.to/anup_sharma_86fa94612fe3c/i-built-an-ai-that-decides-which-ai-to-talk-to-running-247-from-my-living-room-211p) | [Part 2](https://dev.to/anup_sharma_86fa94612fe3c/i-traced-personal-agents-source-code-inside-was-pi-and-it-dreams-at-3-am-o0f)*
@@ -45,6 +48,10 @@ Eighteen percent of requests going to the wrong model doesn't just waste money �
 
 I needed something that *understood* the prompt, not just scanned it for keywords.
 
+pubDatetime: 2026-06-22T00:00:00Z
+description: "Giving AgentGateway a Semantic Brain with vLLM Semantic Router - Inside My Homelab"
+tags:
+  - blog
 ---
 
 ## Enter vLLM Semantic Router
@@ -262,6 +269,10 @@ Notice the **separation of concerns**: the Semantic Router *never* touches API k
 
 And that `failureMode: failOpen`? It means if the SR container ever crashes or is restarting, AgentGateway seamlessly falls through to the default Gemini route. I've tested this — during SR container restarts, Pi's requests still get answered without a single error. The agent doesn't even notice.
 
+pubDatetime: 2026-06-22T00:00:00Z
+description: "Giving AgentGateway a Semantic Brain with vLLM Semantic Router - Inside My Homelab"
+tags:
+  - blog
 ---
 
 ## The ARM64 Rabbit Hole (Two Bugs, Two PRs)
@@ -381,6 +392,10 @@ INFO: mmBERT embedding model registered with 2D Matryoshka support
 
 14 selection algorithms available out of the box. Multi-factor, ELO, reinforcement-learning-driven, hybrid, latency-aware, session-aware, KNN, SVM, K-means — all registered and ready. I'm using `multi_factor` with cost-heavy weighting, but I can switch to any of these with a single YAML change. Try doing that with a Python keyword list.
 
+pubDatetime: 2026-06-22T00:00:00Z
+description: "Giving AgentGateway a Semantic Brain with vLLM Semantic Router - Inside My Homelab"
+tags:
+  - blog
 ---
 
 ## The Numbers After Two Weeks
@@ -413,6 +428,10 @@ If you're building agents — whether it's a personal Pi running on a Mac Mini o
 
 4. **Zero code maintenance.** I haven't touched my routing config since I wrote those model descriptions. The SR learns from the descriptions, not from rules I have to keep updating.
 
+pubDatetime: 2026-06-22T00:00:00Z
+description: "Giving AgentGateway a Semantic Brain with vLLM Semantic Router - Inside My Homelab"
+tags:
+  - blog
 ---
 
 ## What's Next
