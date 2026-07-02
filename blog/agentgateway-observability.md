@@ -1,5 +1,5 @@
 ---
-title: I Almost Built a Grafana Stack—Then AgentGateway Shipped Everything I Needed
+title: I Almost Built a Grafana Stack—Then AgentGateway Shipped Everything I Needed.
 date: 2026-07-03
 ---
 
