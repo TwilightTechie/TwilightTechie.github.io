@@ -1,79 +1,50 @@
 {
-  "name": "v4",
-  "description": "Personal Website V4",
-  "version": "1.0.0",
-  "author": "Brittany Chiang <brittany.chiang@gmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/bchiang7/v4"
+  "name": "deeply-debris",
+  "type": "module",
+  "version": "6.1.0",
+  "engines": {
+    "node": ">=22.12.0"
   },
-  "keywords": [
-    "gatsby"
-  ],
-  "license": "MIT",
-  "browserslist": "> 0.25%, not dead",
   "scripts": {
-    "build": "export NODE_OPTIONS=--openssl-legacy-provider && gatsby build",
-    "develop": "export NODE_OPTIONS=--openssl-legacy-provider && gatsby develop",
-    "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
-    "start": "npm run develop",
-    "serve": "export NODE_OPTIONS=--openssl-legacy-provider && gatsby serve",
-    "clean": "gatsby clean",
-    "prepare": "husky install",
-    "lint-staged": "lint-staged"
-  },
-  "lint-staged": {
-    "*.{js,css,json,md}": [
-      "prettier --write"
-    ],
-    "*.js": [
-      "eslint --fix"
-    ]
+    "dev": "astro dev",
+    "build": "astro check && astro build && pagefind --site dist && cp -r dist/pagefind public/",
+    "preview": "astro preview",
+    "sync": "astro sync",
+    "astro": "astro",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "lint": "eslint ."
   },
   "dependencies": {
-    "animejs": "^3.1.0",
-    "babel-plugin-styled-components": "^1.12.0",
-    "gatsby": "^3.4.1",
-    "gatsby-plugin-google-analytics": "^3.4.0",
-    "gatsby-plugin-image": "^1.4.0",
-    "gatsby-plugin-manifest": "^3.4.0",
-    "gatsby-plugin-netlify": "^3.4.0",
-    "gatsby-plugin-offline": "^4.4.0",
-    "gatsby-plugin-react-helmet": "^4.4.0",
-    "gatsby-plugin-robots-txt": "^1.5.6",
-    "gatsby-plugin-sharp": "^3.4.1",
-    "gatsby-plugin-sitemap": "^4.0.0",
-    "gatsby-plugin-styled-components": "^4.4.0",
-    "gatsby-remark-external-links": "0.0.4",
-    "gatsby-remark-images": "^5.1.0",
-    "gatsby-remark-prismjs": "^5.1.0",
-    "gatsby-source-filesystem": "^3.4.0",
-    "gatsby-transformer-remark": "^4.1.0",
-    "gatsby-transformer-sharp": "^3.4.0",
-    "lodash": "^4.17.19",
-    "prismjs": "^1.27.0",
-    "prop-types": "^15.7.2",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "react-helmet": "^6.1.0",
-    "react-transition-group": "^4.3.0",
-    "scrollreveal": "^4.0.5",
-    "styled-components": "^5.3.0"
+    "@astrojs/mdx": "^6.0.1",
+    "@astrojs/rss": "^4.0.18",
+    "@astrojs/sitemap": "^3.7.3",
+    "@tailwindcss/vite": "^4.3.0",
+    "astro": "^6.4.2",
+    "dayjs": "^1.11.21",
+    "lodash.kebabcase": "^4.1.1",
+    "rehype-callouts": "^2.1.2",
+    "remark-collapse": "^0.1.2",
+    "remark-toc": "^9.0.0",
+    "satori": "^0.26.0",
+    "sharp": "^0.34.5",
+    "slugify": "^1.6.9",
+    "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.14.0",
-    "@babel/eslint-parser": "^7.13.14",
-    "@babel/preset-react": "^7.13.13",
-    "@upstatement/eslint-config": "^1.0.0",
-    "@upstatement/prettier-config": "^1.0.0",
-    "babel-preset-gatsby": "^1.4.0",
-    "eslint": "^7.25.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-jsx-a11y": "^6.4.1",
-    "eslint-plugin-react": "^7.23.2",
-    "gatsby-remark-code-titles": "^1.1.0",
-    "husky": "^6.0.0",
-    "lint-staged": "^10.1.2",
-    "prettier": "^2.2.1"
+    "@astrojs/check": "^0.9.9",
+    "@astrojs/markdown-remark": "^7.2.0",
+    "@pagefind/default-ui": "^1.5.2",
+    "@shikijs/transformers": "^4.1.0",
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/lodash.kebabcase": "^4.1.9",
+    "@typescript-eslint/parser": "^8.60.0",
+    "eslint": "^10.4.1",
+    "eslint-plugin-astro": "^1.7.0",
+    "pagefind": "^1.5.2",
+    "prettier": "3.8.3",
+    "prettier-plugin-astro": "0.14.1",
+    "prettier-plugin-tailwindcss": "^0.8.0",
+    "typescript": "^6.0.3"
   }
 }

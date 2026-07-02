@@ -1,0 +1,179 @@
+---
+import { getEntry, render } from "astro:content";
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import Main from "@/components/Main.astro";
+import Footer from "@/components/Footer.astro";
+import config from "@/config";
+
+const projects = await getEntry("pages", "projects");
+
+if (!projects) {
+  throw new Error(
+    "Missing content entry: `projects.md` or `projects.mdx` in `src/content/pages/`"
+  );
+}
+
+const { Content } = await render(projects);
+---
+
+<Layout
+  title={`${projects.data.title} | ${config.site.title}`}
+  description={projects.data.description}
+  ogImage={projects.data.ogImage}
+  canonicalURL={projects.data.canonicalURL}
+>
+  <Header />
+
+  <Breadcrumb />
+
+  <Main pageTitle={projects.data.title} class="app-prose">
+    <Content />
+
+    <!-- Open Source Merged Sections -->
+    <hr class="border-border my-8" />
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-semibold tracking-wide mb-6">Conference Talks</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 not-prose">
+        <!-- PGConf Video -->
+        <div class="flex flex-col gap-2">
+          <h3 class="text-lg font-medium text-foreground">PGConf India 2024</h3>
+          <p class="text-sm text-muted-foreground">Demystifying PostgreSQL Internals</p>
+          <div class="relative w-full aspect-video rounded-md overflow-hidden border border-border">
+            <iframe 
+              src="https://www.youtube.com/embed/UQKifOJpzso?list=PL35Pd6VvfMIucZ6HwmtGxhxPykQu7aZUz&start=8" 
+              title="PGConf India 2024" 
+              class="absolute top-0 left-0 w-full h-full"
+              frameborder="0" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+              allowfullscreen>
+            </iframe>
+          </div>
+        </div>
+
+        <!-- KubeCon Video -->
+        <div class="flex flex-col gap-2">
+          <h3 class="text-lg font-medium text-foreground">KubeCon + CloudNativeCon</h3>
+          <p class="text-sm text-muted-foreground">Building Agentic Infrastructure</p>
+          <div class="relative w-full aspect-video rounded-md overflow-hidden border border-border">
+            <iframe 
+              src="https://www.youtube.com/embed/sI-FQsQJQSY?list=PL35Pd6VvfMIucZ6HwmtGxhxPykQu7aZUz&start=310" 
+              title="KubeCon + CloudNativeCon" 
+              class="absolute top-0 left-0 w-full h-full"
+              frameborder="0" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+              allowfullscreen>
+            </iframe>
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-6 flex flex-col gap-2 not-prose">
+        <h3 class="text-lg font-medium text-foreground">Bangalore Linux Kernel Meetup</h3>
+        <p class="text-sm text-muted-foreground">
+          Presented my work on kernel driver development and the WiFi 6E stack at the Bangalore Linux Kernel Meetup, alongside engineers from IBM LTC and AMD. 
+          <a href="https://www.linkedin.com/in/anup-sharma1/details/featured/" target="_blank" rel="noopener noreferrer" class="text-accent underline decoration-dashed underline-offset-4">See featured details on LinkedIn</a>.
+        </p>
+      </div>
+    </section>
+
+    <hr class="border-border my-8" />
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-semibold tracking-wide mb-6">Recent Open Source PRs</h2>
+      <p class="text-sm text-muted-foreground mb-4">Fetching real-time merged PRs (AgentGateway, vLLM, OpenClaw)...</p>
+      <div id="github-prs-container" class="space-y-4 not-prose">
+        <div class="animate-pulse text-muted-foreground flex items-center gap-2">
+          <span class="w-2 h-2 bg-accent rounded-full"></span> Loading PRs...
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-2xl font-semibold tracking-wide mb-6">Linux Kernel Commits</h2>
+      <p class="text-sm text-muted-foreground mb-4">Fetching upstream kernel patches directly from the torvalds/linux mirror...</p>
+      <div id="kernel-commits-container" class="space-y-4 not-prose">
+        <div class="animate-pulse text-muted-foreground flex items-center gap-2">
+          <span class="w-2 h-2 bg-accent rounded-full"></span> Loading kernel commits...
+        </div>
+      </div>
+    </section>
+  </Main>
+
+  <Footer />
+</Layout>
+
+<script>
+  async function fetchGitHubData() {
+    // 1. Fetch Merged PRs
+    const prsContainer = document.getElementById("github-prs-container");
+    if (prsContainer) {
+      try {
+        const prRes = await fetch("https://api.github.com/search/issues?q=is:pr+author:TwilightTechie+is:merged&sort=created&order=desc");
+        const prData = await prRes.json();
+        
+        if (prData.items && prData.items.length > 0) {
+          prsContainer.innerHTML = "";
+          prData.items.slice(0, 8).forEach((item: any) => {
+            const date = new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const repoName = item.repository_url.split("/").slice(-2).join("/");
+            
+            prsContainer.innerHTML += `
+              <a href="${item.html_url}" target="_blank" rel="noopener noreferrer" class="block border border-border p-4 rounded hover:border-accent transition-colors no-underline">
+                <div class="flex justify-between items-start gap-4">
+                  <div>
+                    <h3 class="text-lg font-medium text-foreground m-0">${item.title}</h3>
+                    <p class="text-sm text-muted-foreground m-0 mt-1">${repoName} • #${item.number}</p>
+                  </div>
+                  <span class="text-xs font-mono text-muted-foreground whitespace-nowrap">${date}</span>
+                </div>
+              </a>
+            `;
+          });
+        } else {
+          prsContainer.innerHTML = `<p class="text-muted-foreground">No recent PRs found.</p>`;
+        }
+      } catch (err) {
+        prsContainer.innerHTML = `<p class="text-red-400">Failed to load PRs.</p>`;
+      }
+    }
+
+    // 2. Fetch Kernel Commits
+    const commitsContainer = document.getElementById("kernel-commits-container");
+    if (commitsContainer) {
+      try {
+        const commitRes = await fetch("https://api.github.com/search/commits?q=author-name:%22Anup+Sharma%22+repo:torvalds/linux&sort=author-date&order=desc", {
+          headers: { 'Accept': 'application/vnd.github.cloak-preview' }
+        });
+        const commitData = await commitRes.json();
+        
+        if (commitData.items && commitData.items.length > 0) {
+          commitsContainer.innerHTML = "";
+          commitData.items.slice(0, 8).forEach((item: any) => {
+            const date = new Date(item.commit.author.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            
+            commitsContainer.innerHTML += `
+              <a href="${item.html_url}" target="_blank" rel="noopener noreferrer" class="block border border-border p-4 rounded hover:border-accent transition-colors no-underline">
+                <div class="flex justify-between items-start gap-4">
+                  <div>
+                    <h3 class="text-lg font-medium text-foreground m-0">${item.commit.message.split('\\n')[0]}</h3>
+                    <p class="text-sm font-mono text-muted-foreground m-0 mt-1">${item.sha.substring(0, 10)}</p>
+                  </div>
+                  <span class="text-xs font-mono text-muted-foreground whitespace-nowrap">${date}</span>
+                </div>
+              </a>
+            `;
+          });
+        } else {
+          commitsContainer.innerHTML = `<p class="text-muted-foreground">No recent commits found.</p>`;
+        }
+      } catch (err) {
+        commitsContainer.innerHTML = `<p class="text-red-400">Failed to load kernel commits.</p>`;
+      }
+    }
+  }
+
+  fetchGitHubData();
+</script>

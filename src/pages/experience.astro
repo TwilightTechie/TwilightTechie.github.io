@@ -1,0 +1,36 @@
+---
+import { getEntry, render } from "astro:content";
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import Main from "@/components/Main.astro";
+import Footer from "@/components/Footer.astro";
+import config from "@/config";
+
+const experience = await getEntry("pages", "experience");
+
+if (!experience) {
+  throw new Error(
+    "Missing content entry: `experience.md` or `experience.mdx` in `src/content/pages/`"
+  );
+}
+
+const { Content } = await render(experience);
+---
+
+<Layout
+  title={`${experience.data.title} | ${config.site.title}`}
+  description={experience.data.description}
+  ogImage={experience.data.ogImage}
+  canonicalURL={experience.data.canonicalURL}
+>
+  <Header />
+
+  <Breadcrumb />
+
+  <Main pageTitle={experience.data.title} class="app-prose">
+    <Content />
+  </Main>
+
+  <Footer />
+</Layout>
