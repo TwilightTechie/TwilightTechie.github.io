@@ -3,6 +3,7 @@ title: How Cassandra Compression Actually Works (Chunks, Offsets, and Reads)
 description: Unpacking the SSTable block-level compression in distributed databases.
 date: '2026-07-01'
 draft: false
+slug: '/pensieve/cassandra-compression'
 tags:
   - Cassandra
   - Databases

@@ -3,6 +3,7 @@ title: Giving AgentGateway a Semantic Brain with vLLM Semantic Router - Inside M
 description: Integrating AgentGateway with vLLM semantic router for efficient multiplexing.
 date: '2026-06-22'
 draft: false
+slug: '/pensieve/agentgateway-semantic'
 tags:
   - vLLM
   - MCP

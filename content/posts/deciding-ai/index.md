@@ -3,6 +3,7 @@ title: I Built an AI That Decides Which AI to Talk To — Running 24/7 From My L
 description: Orchestrating multiple LLMs dynamically on local edge hardware.
 date: '2026-06-10'
 draft: false
+slug: '/pensieve/deciding-ai'
 tags:
   - LLM
   - Raspberry Pi

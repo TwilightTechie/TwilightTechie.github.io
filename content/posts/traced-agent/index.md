@@ -3,6 +3,7 @@ title: I Traced Personal Agent's Source Code. Inside Was Pi... And It Dreams at 
 description: Deep tracing of autonomous agents in a homelab environment.
 date: '2026-06-15'
 draft: false
+slug: '/pensieve/traced-agent'
 tags:
   - Agentic AI
   - Systems

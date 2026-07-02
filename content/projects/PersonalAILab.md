@@ -7,6 +7,8 @@ tech:
   - LLM
   - Raspberry Pi
   - Ollama
+ios: ''
+android: ''
 showInProjects: true
 ---
 
