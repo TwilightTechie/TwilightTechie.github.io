@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Full Deck — Production Inference Optimization Strategy (All Deliverables)</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --line:#30363d;
+    --text:#e6edf3; --dim:#8b949e; --accent:#58a6ff; --good:#3fb950;
+    --warn:#d29922; --bad:#f85149; --violet:#bc8cff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif}
+  .slide{display:none;height:100vh;padding:4.5vh 6vw;flex-direction:column;overflow:hidden}
+  .slide.active{display:flex}
+  .eyebrow{color:var(--accent);font-size:.9rem;font-weight:600;
+    text-transform:uppercase;letter-spacing:.12em;margin-bottom:.5rem}
+  h1{font-size:3rem;line-height:1.15;margin-bottom:1.1rem}
+  h2{font-size:1.95rem;margin-bottom:1.1rem}
+  h3{font-size:1.1rem;margin:.7rem 0 .4rem;color:var(--accent)}
+  p,li{font-size:1.04rem;line-height:1.5}
+  ul{margin-left:1.3rem}
+  li{margin:.35rem 0}
+  .dim{color:var(--dim)}
+  .good{color:var(--good)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .big{font-size:1.45rem;font-weight:700}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:2rem;flex:1;min-height:0}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:1.3rem}
+  .panel{background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:1rem 1.2rem;margin:.45rem 0}
+  .evidence{background:#0e2038;border-left:4px solid var(--accent);
+    border-radius:6px;padding:.8rem 1.1rem;margin:.6rem 0;font-size:.98rem}
+  .evidence::before{content:"MEASURED — ";color:var(--accent);font-weight:700;font-size:.85rem}
+  table{border-collapse:collapse;width:100%;margin:.5rem 0;font-size:.95rem}
+  th{color:var(--dim);font-weight:600;text-align:left}
+  th,td{padding:.45rem .65rem;border-bottom:1px solid var(--line)}
+  td:first-child{font-weight:600}
+  .talk{margin-top:auto;padding-top:.9rem;color:var(--dim);font-size:.9rem;
+    border-top:1px dashed var(--line)}
+  .talk::before{content:"Talk track: ";color:var(--accent);font-weight:600}
+  .kpi{display:flex;gap:1.2rem;margin:.9rem 0}
+  .kpi .card{flex:1;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:.9rem 1rem;text-align:center}
+  .kpi .val{font-size:2rem;font-weight:800;color:var(--accent)}
+  .kpi .lbl{color:var(--dim);font-size:.88rem;margin-top:.3rem}
+  .footer{position:fixed;bottom:14px;right:22px;color:var(--dim);font-size:.85rem;z-index:10}
+  .hint{position:fixed;bottom:14px;left:22px;color:var(--dim);font-size:.85rem;z-index:10}
+  .apx{border-left:4px solid var(--violet);padding-left:.6rem}
+  svg text{fill:var(--dim);font-size:12px}
+  svg .bval{fill:var(--text);font-weight:700;font-size:13px}
+  code{background:#21262d;border-radius:4px;padding:.08rem .35rem;
+    font-size:.9em;font-family:"SF Mono",Menlo,monospace;color:#ffa657}
+  .small p,.small li,.small td,.small th{font-size:.9rem}
+  .small h3{font-size:1rem}
+</style>
+</head>
+<body>
+
+<!-- 1: TITLE -->
+<section class="slide active">
+  <div style="margin:auto 0">
+    <div class="eyebrow">DigitalOcean — Agentic Inference Cloud · Full Specification Deck</div>
+    <h1>Production Inference<br>Optimization Strategy</h1>
+    <p class="big" style="color:var(--dim);font-weight:400">
+      All three pillars, in depth · measured evidence throughout ·<br>
+      strategy mapping, roadmap, and code-review appendix.
+    </p>
+    <div class="kpi" style="max-width:880px;margin-top:2.2rem">
+      <div class="card"><div class="val">Pillar 1</div><div class="lbl">Kernel &amp; precision engineering</div></div>
+      <div class="card"><div class="val">Pillar 2</div><div class="lbl">Distributed inference &amp; orchestration</div></div>
+      <div class="card"><div class="val">Pillar 3</div><div class="lbl">Resiliency &amp; observability</div></div>
+    </div>
+  </div>
+  <div class="talk">This is the complete deck: spec depth in presentation form. Slides 2–14 are the deliverable; 15+ are the code-review appendix.</div>
+</section>
+
+<!-- 2: PRINCIPLES -->
+<section class="slide">
+  <div class="eyebrow">Design principles</div>
+  <h2>Three rules govern every decision that follows</h2>
+  <div class="cols">
+    <div class="panel"><h3>1 · Decode is memory-bound</h3>
+      <p>Every generated token streams all weight bytes from HBM (H200 ~4.8 TB/s, MI300X ~5.3 TB/s). Prefill is compute-bound. Every optimization: <b>move fewer bytes, amortize bytes, or don't recompute them.</b></p></div>
+    <div class="panel"><h3>2 · Optimize goodput, not throughput</h3>
+      <p>Target = max tokens/sec/dollar <b>subject to</b> per-tenant SLOs (p99 TTFT, p99 ITL) and a quality floor. Raw throughput rewards exactly the saturation that violates tails.</p></div>
+  </div>
+  <div class="cols">
+    <div class="panel"><h3>3 · Quality gates, not vibes</h3>
+      <p>No quantized or kernel-modified artifact reaches a tenant without an automated regression gate: perplexity + task evals + long-chain reasoning suite.</p></div>
+    <div class="panel"><h3>Method</h3>
+      <p>Core claims validated at miniature scale: 3-precision benchmark harness + 2-replica routing PoC (llama.cpp, Qwen2.5-1.5B, Apple Silicon). Physics transfer; constants change.</p></div>
+  </div>
+  <div class="talk">These three principles are the answer to "how do you make trade-offs" — everything after this slide is their application.</div>
+</section>
+
+<!-- 3: PILLAR 1 PRECISION -->
+<section class="slide">
+  <div class="eyebrow">Pillar 1 · Precision management</div>
+  <h2>Quantize by model class, gate by evals</h2>
+  <table>
+    <tr><th>Model class</th><th>Weights/Acts</th><th>KV cache</th><th>Rationale &amp; trade-off</th></tr>
+    <tr><td>200B+ MoE</td><td>FP8 W8A8 · NVFP4 on B300</td><td>FP8</td><td>Most quantization-robust class (~99% recovery at scale); FP8 = 2x tensor throughput + half the bytes; NVFP4 earns ~2x more capacity per-model as evals pass</td></tr>
+    <tr><td>Dense long-context reasoners</td><td>FP8 · FP4 eval-gated only</td><td>FP8 — biggest lever at long context</td><td>Reasoning chains degrade first (errors compound over thousands of steps; FP4 mis-samples low-entropy tokens) — trade throughput for safety margin</td></tr>
+    <tr><td>Draft models</td><td>INT4 weight-only</td><td>FP16/FP8</td><td>Draft errors are verified away by the target — they cost acceptance rate, not correctness</td></tr>
+  </table>
+  <div class="cols">
+    <div class="panel"><b>Why non-uniform:</b> accuracy recovery improves with model scale; benchmarks (MMLU) move last, long-chain reasoning moves first. One policy per class, never fleet-wide.</div>
+    <div class="panel"><b>Heterogeneous fleet:</b> one source checkpoint → per-hardware artifacts (CUDA/Hopper, CUDA/Blackwell native FP4, ROCm/CDNA3 FP8). The eval gate runs <i>per artifact</i> — numerics differ across backends. Calibration data mirrors production traffic.</div>
+  </div>
+  <div class="talk">FP8 is the default; FP4 is earned per-model. KV quantization matters as much as weights once context grows.</div>
+</section>
+
+<!-- 4: PILLAR 1 KERNELS -->
+<section class="slide">
+  <div class="eyebrow">Pillar 1 · Compute &amp; memory access (SRAM vs HBM)</div>
+  <h2>IO-aware kernels: spend FLOPs to save bytes</h2>
+  <div class="grid2">
+    <div>
+      <ul>
+        <li><b>Attention:</b> FlashAttention-3/4-class fused kernels — tile Q/K/V into SRAM, online softmax, never materialize the O(N²) score matrix in HBM. Recomputation traded for memory traffic: a strict win for a memory-bound op.</li>
+        <li><b>Blackwell twist:</b> tensor cores grew ~2.25x over Hopper, exponential units didn't — softmax becomes the bottleneck. B300 kernels emulate exp() on FMA units (FA-4 approach).</li>
+        <li><b>MoE:</b> fused dispatch/expert/combine with DeepEP-style all-to-all overlapped with expert compute; FP8 grouped GEMMs.</li>
+        <li><b>Decode path:</b> CUDA-graph-captured steps (kill launch overhead), paged KV block layout tuned per architecture.</li>
+      </ul>
+      <div class="panel"><b>Long-context roadmap:</b> chunked prefill bounds per-iteration compute → FP8 KV halves capacity + read bandwidth → DSA-style trainable sparse attention (lightweight indexer, top-k selection, O(L·k)) as the 500K+ endgame.</div>
+    </div>
+    <div>
+      <div id="chart-decode"></div>
+      <div class="evidence">TTFT at 2,000 words is quantization-invariant (0.43–0.45s across FP16/Q8/Q4) while decode differs 2.3x — prefill compute-bound, decode bandwidth-bound, phases deserve different optimizations.</div>
+    </div>
+  </div>
+  <div class="talk">Roofline logic: a kernel is memory-bound until arithmetic intensity beats the hardware FLOPS/bandwidth ratio (~400 FLOPs/byte on H200). Decode never gets close — hence every byte saved is throughput earned.</div>
+</section>
+
+<!-- 5: PILLAR 2 PARALLELISM -->
+<section class="slide">
+  <div class="eyebrow">Pillar 2 · Parallelism strategy</div>
+  <h2>The interconnect decides the parallelism, not the model</h2>
+  <table>
+    <tr><th>Strategy</th><th>Communication</th><th>Placement (NVLink/xGMI in-node · 25Gbps VPC across)</th><th>Cost</th></tr>
+    <tr><td>Tensor (TP)</td><td>All-reduce 2x/layer, on every token's critical path</td><td class="good">Intra-node only (TP ≤ 8)</td><td>Best latency; catastrophic over 25Gbps</td></tr>
+    <tr><td>Expert (EP)</td><td>All-to-all 2x/MoE layer</td><td class="good">Intra-node; wide-EP only over RDMA fabric</td><td>Hot experts → EPLB-style replication</td></tr>
+    <tr><td>Pipeline (PP)</td><td>Point-to-point activations (small)</td><td class="warn">The cross-node axis; tolerates 25Gbps</td><td>Bubbles; adds TTFT</td></tr>
+    <tr><td>Data (DP)</td><td>None — replicas</td><td class="good">Cross-node scale-out</td><td>Full memory each; needs cache-aware routing</td></tr>
+  </table>
+  <div class="cols">
+    <div class="panel"><b>Per class:</b> 200B+ MoE → EP=8 + TP for attention inside an 8x slug, FP8/FP4 keeps it single-node, DP across nodes. Dense reasoners → TP 2–8 intra-node; <b>MI300X/MI325X's 192–256GB HBM is the strategic asset</b> — TP=8-on-H200 models fit at TP=2–4, avoiding inter-node traffic. Drafts → single-GPU DP colocated with targets.</div>
+    <div class="panel"><b>Rejected alternative:</b> cross-node TP "for one big simple pool" — all-reduce on every token over a link with ~300x less bandwidth than NVLink. No scheduler hides a two-order-of-magnitude mismatch. PP is the only cross-node model-splitting axis.</div>
+  </div>
+  <div class="talk">One sentence per row, then land on the MI300X memory point — it's the fleet-specific insight, not generic textbook.</div>
+</section>
+
+<!-- 6: PILLAR 2 DISAGG -->
+<section class="slide">
+  <div class="eyebrow">Pillar 2 · Efficiency primitives 1/2</div>
+  <h2>Disaggregated prefill/decode: isolate the two physics</h2>
+  <div class="grid2">
+    <div>
+      <ul>
+        <li><b>The problem:</b> colocated, one tenant's long prefill stalls every streaming decode — p99 ITL held hostage to others' TTFT.</li>
+        <li><b>The split:</b> prefill pool (compute-optimized, big token batches) + decode pool (bandwidth/KV-capacity-optimized); KV handoff over <b>RDMA (NIXL-style)</b> — never the 25Gbps VPC, where transfer erases the win.</li>
+        <li><b>Dynamic roles:</b> pool sizing follows traffic mix; static assignment strands capacity when the prompt/output ratio shifts.</li>
+        <li><b>No-RDMA fallback:</b> chunked prefill on colocated nodes — bounded prefill slices interleaved between decode steps; most of the ITL isolation, zero transfer cost.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="panel"><b>Production evidence (vLLM, GB300, DeepSeek-V3.2):</b> at batch 256, disaggregated serving holds TPOT &lt; 60ms where colocated exceeds 80ms — and the latency curve stays flat as load grows.<br><br><b>The honest trade-off:</b> per-GPU nominal throughput can be <i>lower</i>. You spend hardware to buy SLO stability — i.e., goodput. That's the correct trade for a multi-tenant cloud selling latency guarantees.</div>
+    </div>
+  </div>
+  <div class="talk">Frame it as buying predictability: the metric that improves is the tail, and SLOs are written against the tail.</div>
+</section>
+
+<!-- 7: PILLAR 2 KV -->
+<section class="slide">
+  <div class="eyebrow">Pillar 2 · Efficiency primitives 2/2</div>
+  <h2>KV-cache as a cluster resource + cache-aware routing</h2>
+  <div class="grid2">
+    <div>
+      <ul>
+        <li><b>Tiering:</b> GPU HBM (hot) → pinned host DRAM → local NVMe → cluster KV pool over RDMA (Mooncake/LMCache pattern), content-addressed by prefix-block hash.</li>
+        <li><b>Multi-tenant security:</b> caches <b>namespaced per tenant</b> — cache-hit timing is an information side-channel; cross-tenant sharing is off by design.</li>
+        <li><b>Agentic loops:</b> each turn re-sends the growing conversation; a prefix hit converts that prefill to incremental cost — this is what breaks latency compounding.</li>
+        <li><b>Routing:</b> with DP replicas, round-robin destroys hit rates (≈1/N). Router scores replicas on prefix overlap + queue depth + load; sticky sessions with load-based override.</li>
+        <li><b>Continuous batching everywhere:</b> iteration-level admission, chunked prefill interleave, KV-pressure preemption. Batch depth set from SLO headroom, per pool.</li>
+      </ul>
+    </div>
+    <div>
+      <div id="chart-routing"></div>
+      <div class="evidence">2 replicas, 8 concurrent multi-turn sessions: round-robin → cache-aware routing = turns-2+ mean TTFT 110→34ms (3.2x), p95 260→36ms (~7x). Policy change only. Matches Google GKE Inference Gateway production report (35% TTFT, 2x p95) and llm-d's endpoint-picker design.</div>
+    </div>
+  </div>
+  <div class="talk">Once every engine has prefix caching, the load balancer becomes part of the inference stack. My 2-replica PoC is round-robin's best case — production penalty (1/N hit rate) is worse.</div>
+</section>
+
+<!-- 8: PILLAR 3 COLD START -->
+<section class="slide">
+  <div class="eyebrow">Pillar 3 · Cold start mitigation</div>
+  <h2>Make the bytes already there — or cheap to move</h2>
+  <div class="grid2">
+    <div>
+      <p><b>The math:</b> 200GB over the 25Gbps VPC ≈ 80s of pure transfer. Over the 400G RoCE fabric ≈ 5s. Prohibitive for scale-to-zero unless the hierarchy does the work:</p>
+      <ul>
+        <li><b>Tier 1:</b> node OS page cache — free, dominant on warm nodes.</li>
+        <li><b>Tier 2:</b> local NVMe artifact cache, LRU by model popularity.</li>
+        <li><b>Tier 3:</b> peer-to-peer fetch from other fleet nodes over RoCE — <b>the fleet is the CDN</b>.</li>
+        <li><b>Tier 4:</b> object storage as origin only.</li>
+      </ul>
+      <p>Plus: streaming loaders (serve-while-loading, layer-ordered), snapshot/restore of initialized processes for frequently-cycled serverless models.</p>
+    </div>
+    <div>
+      <div class="panel"><b>Two multiplicative levers:</b><br>
+        1 · Quantized artifacts halve/quarter the bytes — <b>FP8/FP4 is also a cold-start optimization</b>.<br>
+        2 · Weight-aware placement: the router biases new sessions toward nodes whose caches already hold the model — same cache-aware principle as KV routing, applied to weights.</div>
+      <div class="evidence">Identical model load: 7.4s from cold disk vs 0.6s from warm page cache — <b>12x</b> from cache placement alone, before any exotic engineering.</div>
+    </div>
+  </div>
+  <div class="talk">Answer the "100GB+ models" ask with the bandwidth math first, then show the hierarchy exists to keep loads off the slow link entirely.</div>
+</section>
+
+<!-- 9: PILLAR 3 TELEMETRY -->
+<section class="slide">
+  <div class="eyebrow">Pillar 3 · Telemetry &amp; benchmarking</div>
+  <h2>Three layers of instrumentation, one KPI model</h2>
+  <table>
+    <tr><th>Layer</th><th>What's captured</th><th>Cadence</th></tr>
+    <tr><td>Kernel</td><td>Nsight / rocprof traces; roofline placement per kernel; attention vs GEMM vs comms split; catches "kernel fell off the fused path" regressions</td><td>Sampled, canary replicas</td></tr>
+    <tr><td>Engine</td><td>Per-request streaming timestamps → TTFT (decomposed: queue + prefill), TPOT, full ITL distribution; queue depth, batch occupancy, prefix-hit rate, preemptions, KV utilization</td><td>Always-on</td></tr>
+    <tr><td>Fleet</td><td>Tokens/sec/dollar per model/hardware/tenant (true cost incl. idle amortization); SLO burn rate; routing quality</td><td>Always-on</td></tr>
+  </table>
+  <div class="cols">
+    <div class="panel"><b>Guaranteeing KPIs:</b> SLOs are per-tenant-tier contracts (e.g. p99 TTFT &lt; 500ms, p99 ITL &lt; 50ms interactive). Autoscaling/admission signal = <b>SLO headroom, not GPU utilization</b> — utilization rewards the saturation that violates tails.</div>
+    <div class="panel"><b>Benchmark discipline:</b> Poisson arrivals at production length mixes (back-to-back sweeps overstate ~2x); goodput-under-SLO is the reported number; continuous canary replay attaches a before/after KPI delta to every kernel/quant/engine change.</div>
+  </div>
+  <div class="talk">TPOT is a mean; ITL is a distribution — users feel the p99 stalls that TPOT hides. That's why ITL is a first-class KPI and why disaggregation exists.</div>
+</section>
+
+<!-- 10: EVIDENCE BENCH -->
+<section class="slide">
+  <div class="eyebrow">Evidence · Benchmark harness</div>
+  <h2>The measured trade-off surface (all four KPIs)</h2>
+  <div class="grid2">
+    <div id="chart-ttft"></div>
+    <div id="chart-prefix"></div>
+  </div>
+  <table>
+    <tr><th>Precision</th><th>Size</th><th>Decode tok/s</th><th>TPOT</th><th>ITL p95</th><th>TTFT @2000w</th><th>Quality gate</th></tr>
+    <tr><td>FP16</td><td>3.56 GB</td><td>75.8</td><td>13.2 ms</td><td>13.8 ms</td><td>0.426 s</td><td>6/8</td></tr>
+    <tr><td>Q8_0</td><td>1.89 GB</td><td>119.0</td><td>8.4 ms</td><td>9.0 ms</td><td>0.444 s</td><td>6/8</td></tr>
+    <tr><td>Q4_K_M</td><td>1.12 GB</td><td>176.5</td><td>5.7 ms</td><td>6.0 ms</td><td>0.453 s</td><td>6/8</td></tr>
+  </table>
+  <div class="talk">Same two questions missed at every precision — a capability limit, not a quantization artifact. This is what "eval-gated" looks like in practice.</div>
+</section>
+
+<!-- 11: DO STRATEGY -->
+<section class="slide small">
+  <div class="eyebrow">Strategy</div>
+  <h2>2026 techniques mapped onto the AI-Native Cloud</h2>
+  <table>
+    <tr><th>Where it lands</th><th>Technique (source)</th><th>Customer impact</th></tr>
+    <tr><td>Inference Router (preview)</td><td>Prefix-cache-aware endpoint picking (llm-d EPP pattern)</td><td>3–7x multi-turn TTFT for agentic tenants — software-only; my PoC + Google prod numbers</td></tr>
+    <tr><td>Serverless fleet</td><td>Cluster KV pool over the 400G RoCE fabric (Mooncake/LMCache)</td><td>Any replica reuses any prefix; sessions survive rebalancing; higher effective batch</td></tr>
+    <tr><td>Inference Optimized Image</td><td>EAGLE-3 / MTP speculative decoding + FP8 KV defaults</td><td>2–3x TPOT on chat/code; MTP heads come free with DeepSeek-class models</td></tr>
+    <tr><td>MoE serving (DeepSeek, Qwen 397B)</td><td>Wide-EP with DeepEP/EPLB dispatch + P/D disaggregation over RDMA</td><td>DeepSeek's stack sustains 73.7k in / 14.8k out tok/s per H800 node — the margin exists</td></tr>
+    <tr><td>B300 fleet</td><td>NVFP4 artifacts, eval-gated per model</td><td>~3.5x weight memory vs FP16 at ~99% recovery (large/MoE) → more models per GPU</td></tr>
+    <tr><td>Scale-to-zero serverless</td><td>Hierarchical weight caching + streaming loaders</td><td>Cold start minutes → seconds; directly answers the 100GB+ problem</td></tr>
+  </table>
+  <div class="talk">All additive to today's stack — Router preview, RoCE fabric, and the optimized image are natural landing spots. Their Router currently picks models on cost/quality; replica-level cache-awareness is the gap my PoC addresses.</div>
+</section>
+
+<!-- 12: ROADMAP -->
+<section class="slide">
+  <div class="eyebrow">Close</div>
+  <h2>Phased roadmap — each phase independently valuable</h2>
+  <div class="kpi">
+    <div class="card"><div class="val">1</div><div class="lbl"><b>Cache-aware routing + prefix caching</b><br>weeks, software-only · 3–7x multi-turn TTFT (proven: PoC + Google prod)</div></div>
+    <div class="card"><div class="val">2</div><div class="lbl"><b>FP8 defaults + speculative decoding</b><br>one quarter · 2–3x TPOT, lossless via verification</div></div>
+    <div class="card"><div class="val">3</div><div class="lbl"><b>KV pooling + P/D disaggregation</b><br>2–3 quarters, needs RDMA · tail SLOs at high utilization</div></div>
+    <div class="card"><div class="val">4</div><div class="lbl"><b>NVFP4 + sparse attention</b><br>rides B300 ramp · next 2–4x cost curve</div></div>
+  </div>
+  <div class="panel" style="margin-top:1.2rem">
+    <b>The through-line:</b> every phase attacks bytes-per-token or bytes-not-recomputed; every phase is measured by the same four KPIs (TTFT, TPOT, ITL, tokens/sec/dollar) and gated by the same quality bar. Nothing is speculative — each item ships today in llm-d, vLLM, SGLang, or DeepSeek's open stack.
+  </div>
+  <p class="dim" style="margin-top:1.2rem">Appendix (→): tech choices &amp; rejected alternatives · five failure-mode walkthroughs · throughput math &amp; 10x plan · references.</p>
+  <div class="talk">End here for the main talk; everything after is Q&amp;A ammunition.</div>
+</section>
+
+<!-- 13: APX A1 -->
+<section class="slide small">
+  <div class="eyebrow apx">Appendix A1 — demo repo</div>
+  <h2>Tech choices &amp; the alternatives we rejected</h2>
+  <table>
+    <tr><th>Choice</th><th>What we use</th><th>Rejected alternative</th><th>Why</th></tr>
+    <tr><td>Inference engine</td><td>llama.cpp (<code>llama-server</code>, Metal)</td><td>vLLM · Ollama</td><td>vLLM has no Mac GPU path; Ollama hides needed flags (<code>cache_prompt</code>, slots). Fleet answer: vLLM/SGLang/TensorRT-LLM.</td></tr>
+    <tr><td>Framework</td><td>Python stdlib (<code>urllib</code>, <code>subprocess</code>)</td><td>FastAPI + aiohttp + locust</td><td>Zero dependencies = runs anywhere in the room; the harness is the product.</td></tr>
+    <tr><td>Storage</td><td>Flat <code>results.json</code> / md</td><td>SQLite / Postgres</td><td>KBs of data, git-diffable; a DB adds ops surface for zero queries.</td></tr>
+    <tr><td>Queue</td><td>llama-server in-process slot queue (1 slot)</td><td>Redis / Celery</td><td>Benchmark is deliberately sequential — an external queue adds latency noise. Production needs real admission control (A3).</td></tr>
+    <tr><td>Deploy target</td><td>Local Apple Silicon</td><td>Docker on GPU Droplet</td><td>Must run offline mid-interview; methodology transfers to DOKS + GPU Droplets unchanged.</td></tr>
+  </table>
+  <div class="talk">Every choice optimizes reproducibility-in-the-room over production fidelity — deliberately, with a named production substitute for each.</div>
+</section>
+
+<!-- 14: APX A2 -->
+<section class="slide small">
+  <div class="eyebrow apx">Appendix A2 — failure modes 1–3 (bench.py)</div>
+  <h2>Crash, restart, duplicate</h2>
+  <h3 class="bad">1 · Worker (llama-server) crashes mid-job</h3>
+  <p><b>Current:</b> stream read raises → <code>finally:</code> (bench.py:205) stops the server — but results are built in one list (:213) and written once at the end (:215). <b>Risk:</b> crash at the last quant loses the whole run. <b>Fix:</b> checkpoint — <code>json.dump</code> after each <code>bench_quant()</code>.</p>
+  <h3 class="bad">2 · Process restarts — what state is lost?</h3>
+  <p><b>Current:</b> all results in memory until the final write — total loss. Worse: the child server is orphaned holding port 8933; the next run's health poll (:69) gets 200 OK <i>from the old server</i> and silently benchmarks the wrong model. <b>Risk:</b> silent wrong-model data. <b>Fix:</b> <code>atexit</code> kill + verify served model identity via <code>/props</code> before measuring.</p>
+  <h3 class="warn">3 · Duplicate submission</h3>
+  <p><b>Current:</b> harness is sequential, so no dupes — but a duplicated prompt would hit the slot cache and record a warm prefill as cold; that's why every cold measurement carries a nonce (:159, :186). Server-side there's no idempotency: a retried POST generates (and would bill) twice. <b>Fix:</b> idempotency keys at the gateway; keep nonce discipline in the harness.</p>
+  <div class="talk">The orphan-server case is the sneaky one — the health check passes for the wrong reason. Identity-check what you benchmark.</div>
+</section>
+
+<!-- 15: APX A3 -->
+<section class="slide small">
+  <div class="eyebrow apx">Appendix A3 — failure modes 4–5 + backpressure</div>
+  <h2>Burst traffic and the job that never finishes</h2>
+  <h3 class="warn">4 · Queue full under burst</h3>
+  <p><b>Current:</b> server launched without <code>--parallel</code> (bench.py:57–64) → one slot. Concurrent requests queue inside llama-server; each client waits up to the 600s socket timeout (:109). No 429, no shedding. <b>Risk:</b> head-of-line blocking → unbounded latency → timeout avalanche, zero signal to callers. <b>Fix:</b> <code>--parallel N</code> + gateway admission control returning 429 + Retry-After past a queue-depth threshold.</p>
+  <h3 class="bad">5 · A job that never finishes</h3>
+  <p><b>Current:</b> two hazards. (a) Health poll is <code>while True</code> (:69), no deadline — an alive-but-never-healthy server (bad model file, VRAM exhaustion) loops forever. (b) The 600s timeout is per-socket-read — a stream trickling one token per 599s never times out; only <code>max_tokens</code> bounds it. <b>Fix:</b> health-poll deadline (~120s) + wall-clock budget per request in the client.</p>
+  <div class="panel"><b>Production translation:</b> these five map to checkpointed state, identity verification, idempotency keys, admission control, and request deadlines — the standard reliability kit, discovered bottom-up from 220 lines of Python.</div>
+  <div class="talk">The point isn't that a demo script has gaps — it's knowing precisely where they are and what each costs.</div>
+</section>
+
+<!-- 16: APX A4 -->
+<section class="slide small">
+  <div class="eyebrow apx">Appendix A4 — capacity</div>
+  <h2>Throughput math from actual config, and the 10x path</h2>
+  <div class="cols">
+    <div>
+      <h3>Today (measured constants · 1 slot · ctx 8192)</h3>
+      <ul>
+        <li><b>Max concurrent jobs: 1.</b> Everything else queues (no <code>--parallel</code>).</li>
+        <li>256-token response ≈ prefill 0.05–0.45s + decode 256/176.5 ≈ 1.45s (Q4) → <b>~1.5–1.9s/request → ~0.5–0.7 req/s</b>; FP16 ≈ 0.3 req/s.</li>
+        <li>Health-poll sleep 0.1s (:78) ≤ 100ms per server start — noise.</li>
+        <li><b>First bottleneck: single-slot serialization</b> — not CPU or RAM. At batch 1, 1.1–3.6GB of weights stream per token for one stream; bandwidth amortizes across zero neighbors.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Scaling to 10x — what changes first</h3>
+      <ul>
+        <li><b>First: <code>--parallel 8</code> + continuous batching</b> — decode steps share each weight pass; ~5–8x for mild ITL cost. KV check: 8 slots x 8192 ctx x ~110MB ≈ 0.9GB — fits.</li>
+        <li><b>Then:</b> checkpointing + admission control (A2/A3) so the load is survivable, not just fast.</li>
+        <li><b>Then: replicas behind the cache-aware router</b> — the PoC already proves the routing layer; linear scale-out with preserved hit rates.</li>
+        <li><b>Bottleneck order: slots → KV memory → memory bandwidth → compute.</b> Same order holds on the fleet.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="talk">Rough math from real config values — and the generalization: batching first, memory second, silicon last.</div>
+</section>
+
+<!-- 17: APX A5 REFERENCES -->
+<section class="slide small">
+  <div class="eyebrow apx">Appendix A5</div>
+  <h2>Selected references</h2>
+  <div class="cols">
+    <div>
+      <h3>Systems canon</h3>
+      <ul>
+        <li>Orca (OSDI '22) — continuous batching</li>
+        <li>vLLM / PagedAttention (SOSP '23) — arXiv:2309.06180</li>
+        <li>DistServe (OSDI '24) — P/D disaggregation, goodput — arXiv:2401.09670</li>
+        <li>Sarathi-Serve (OSDI '24) — chunked prefill — arXiv:2403.02310</li>
+        <li>Mooncake (FAST '25 Best Paper) — KV-centric serving — arXiv:2407.00079</li>
+        <li>FlashAttention 1–4 — arXiv:2205.14135 · together.ai/blog/flashattention-4</li>
+      </ul>
+    </div>
+    <div>
+      <h3>2026 techniques used in this deck</h3>
+      <ul>
+        <li>llm-d (CNCF) — cache-aware routing — github.com/llm-d</li>
+        <li>GKE Inference Gateway — 35% TTFT / 2x p95 in prod — Google Cloud blog</li>
+        <li>DeepSeek open-infra — FlashMLA, DeepEP, EPLB · 73.7k/14.8k tok/s/node</li>
+        <li>NVFP4 — NVIDIA dev blog · ~99% recovery at 70B+ (Red Hat evals)</li>
+        <li>EAGLE-3 — arXiv:2503.01840 · DSA sparse attention — arXiv:2512.02556</li>
+        <li>LMCache + Mooncake Store — vLLM cluster KV pooling (May 2026)</li>
+      </ul>
+    </div>
+  </div>
+  <p class="dim" style="margin-top:.8rem">Full annotated bibliography: <code>inference-trends-2026.md</code> §6 · Raw data: <code>demo/results/results.json</code>, <code>routing.json</code> · Written spec: <code>spec.html</code></p>
+</section>
+
+<div class="hint">← → to navigate · Home/End to jump</div>
+<div class="footer" id="counter"></div>
+
+<script>
+const slides=[...document.querySelectorAll(".slide")];
+let idx=Math.min(parseInt(location.hash.slice(1))||0,slides.length-1);
+function show(i){
+  slides[idx].classList.remove("active");
+  idx=Math.max(0,Math.min(i,slides.length-1));
+  slides[idx].classList.add("active");
+  location.hash=idx;
+  document.getElementById("counter").textContent=
+    (idx+1)+" / "+slides.length+(idx>=12?"  (appendix)":"");
+}
+addEventListener("keydown",e=>{
+  if(["ArrowRight","PageDown"," "].includes(e.key)) show(idx+1);
+  else if(["ArrowLeft","PageUp"].includes(e.key)) show(idx-1);
+  else if(e.key==="Home") show(0);
+  else if(e.key==="End") show(slides.length-1);
+});
+addEventListener("click",e=>{
+  if(e.target.closest("a,code")) return;
+  show(e.clientX>innerWidth/2?idx+1:idx-1);
+});
+show(idx);
+
+function barChart(el,title,labels,series,unit,colors){
+  const W=560,H=340,P={t:44,r:16,b:56,l:52};
+  const n=labels.length,m=series.length;
+  const max=Math.max(...series.flatMap(s=>s.data))*1.15;
+  const cw=(W-P.l-P.r)/n, bw=cw/(m+0.6);
+  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">`;
+  s+=`<text x="${W/2}" y="20" text-anchor="middle" class="bval">${title}</text>`;
+  for(let g=0;g<=4;g++){
+    const y=P.t+(H-P.t-P.b)*g/4, v=Math.round(max*(1-g/4));
+    s+=`<line x1="${P.l}" y1="${y}" x2="${W-P.r}" y2="${y}" stroke="#30363d"/>`;
+    s+=`<text x="${P.l-6}" y="${y+4}" text-anchor="end">${v}</text>`;
+  }
+  labels.forEach((lb,i)=>{
+    series.forEach((sr,j)=>{
+      const v=sr.data[i], h=(H-P.t-P.b)*v/max;
+      const x=P.l+i*cw+cw*0.15+j*bw, y=H-P.b-h;
+      s+=`<rect x="${x}" y="${y}" width="${bw*0.85}" height="${h}" rx="3" fill="${colors[j]}"/>`;
+      s+=`<text x="${x+bw*0.42}" y="${y-6}" text-anchor="middle" class="bval">${v}</text>`;
+    });
+    s+=`<text x="${P.l+i*cw+cw/2}" y="${H-P.b+18}" text-anchor="middle">${lb}</text>`;
+  });
+  series.forEach((sr,j)=>{
+    s+=`<rect x="${P.l+j*150}" y="${H-16}" width="12" height="12" rx="2" fill="${colors[j]}"/>`;
+    s+=`<text x="${P.l+j*150+18}" y="${H-6}">${sr.name}${unit?` (${unit})`:""}</text>`;
+  });
+  s+="</svg>";
+  document.getElementById(el).innerHTML=s;
+}
+
+/* data from demo/results/results.json and routing.json */
+barChart("chart-decode","Decode throughput vs precision (measured)",
+  ["FP16 · 3.56GB","Q8_0 · 1.89GB","Q4_K_M · 1.12GB"],
+  [{name:"decode",data:[75.8,119.0,176.5]}],"tok/s",["#58a6ff"]);
+
+barChart("chart-routing","Mean TTFT by conversation turn (ms, measured)",
+  ["turn 1","turn 2","turn 3","turn 4"],
+  [{name:"round-robin",data:[237,259,36,36]},
+   {name:"cache-aware",data:[254,34,32,34]}],"",["#f85149","#3fb950"]);
+
+barChart("chart-ttft","TTFT vs prompt length — FP16 (ms, measured)",
+  ["100 words","500 words","2000 words"],
+  [{name:"TTFT",data:[44,116,426]}],"ms",["#bc8cff"]);
+
+barChart("chart-prefix","Prefix cache: TTFT cold vs cached (ms, measured)",
+  ["FP16","Q8_0","Q4_K_M"],
+  [{name:"cold",data:[437,444,453]},
+   {name:"cached",data:[17,12,9]}],"",["#d29922","#3fb950"]);
+</script>
+</body>
+</html>

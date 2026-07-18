@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Architectural Specification — Production Inference Optimization Strategy</title>
+<style>
+  :root{--ink:#1a1f24;--dim:#57606a;--line:#d0d7de;--accent:#0757ba;--bg-ev:#f0f6ff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Georgia,"Times New Roman",serif;color:var(--ink);
+       background:#fff;max-width:860px;margin:0 auto;padding:48px 40px;
+       font-size:10.5pt;line-height:1.5}
+  header{border-bottom:2.5px solid var(--ink);padding-bottom:10px;margin-bottom:18px}
+  h1{font-size:17pt;line-height:1.25}
+  .meta{font-family:Helvetica,Arial,sans-serif;font-size:8.5pt;color:var(--dim);margin-top:6px}
+  h2{font-family:Helvetica,Arial,sans-serif;font-size:12pt;color:var(--accent);
+     margin:16px 0 6px;border-bottom:1px solid var(--line);padding-bottom:3px}
+  h3{font-family:Helvetica,Arial,sans-serif;font-size:10pt;margin:10px 0 3px}
+  p{margin:5px 0;text-align:justify}
+  ul{margin:4px 0 6px 20px}
+  li{margin:2.5px 0}
+  b{color:#000}
+  table{border-collapse:collapse;width:100%;margin:7px 0;
+        font-family:Helvetica,Arial,sans-serif;font-size:8.5pt}
+  th{background:#f6f8fa;text-align:left;font-weight:700}
+  th,td{border:1px solid var(--line);padding:4px 7px;vertical-align:top}
+  .evidence{background:var(--bg-ev);border-left:3px solid var(--accent);
+            padding:7px 11px;margin:7px 0;font-size:9.5pt}
+  .evidence::before{content:"Measured evidence — ";font-family:Helvetica,Arial,sans-serif;
+            font-weight:700;color:var(--accent);font-size:8.5pt}
+  .footnote{font-size:8.5pt;color:var(--dim);border-top:1px solid var(--line);
+            margin-top:14px;padding-top:6px}
+  @media print{
+    body{padding:0;max-width:none;font-size:10pt}
+    @page{margin:16mm 18mm}
+    h2{break-after:avoid}
+    table,.evidence{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Production Inference Optimization Strategy for the Agentic Inference Cloud</h1>
+  <div class="meta">Architectural specification · July 2026 · Scope: flagship multi-model inference endpoint —
+  200B+ MoE, dense long-context reasoners, and quantized draft models on NVIDIA (H200/B300) and AMD (MI300X/MI325X/MI350X)
+  1x/8x slugs; NVLink/xGMI intra-node, 25 Gbps VPC inter-node · Companion artifacts: benchmark harness, routing PoC, slide deck</div>
+</header>
+
+<p><b>Design principles.</b> (1) Autoregressive decode is memory-bandwidth-bound — each generated token streams every weight byte from HBM — while prefill is compute-bound; nearly every choice below either moves fewer bytes, amortizes bytes across requests, or avoids recomputing them. (2) The optimization target is <b>goodput</b>: maximum tokens/sec/dollar <i>subject to</i> per-tenant SLOs (p99 TTFT, p99 ITL) and a minimum quality bar — never raw throughput. (3) No quantized or kernel-modified artifact reaches a tenant without passing an automated quality regression gate. I validated the core claims at miniature scale on a local harness (Qwen2.5-1.5B, three precisions, llama.cpp) and a two-replica routing PoC; the physics transfer, only the constants change.</p>
+
+<h2>1. Kernel &amp; Precision Engineering</h2>
+
+<h3>1.1 Precision policy: quantize by model class, gate by evals</h3>
+<p>Accuracy degradation under quantization is non-uniform: recovery improves with model scale (~99% at 70B+, and MoE models are the most robust), while long-chain reasoning degrades before benchmark scores do, because per-token errors compound over thousands of decode steps. The policy therefore differs per model class rather than being fleet-wide:</p>
+<table>
+<tr><th>Model class</th><th>Weights / Activations</th><th>KV cache</th><th>Rationale &amp; trade-off</th></tr>
+<tr><td>200B+ MoE</td><td>FP8 (W8A8); NVFP4 on B300</td><td>FP8</td><td>Most quantization-robust class; FP8 doubles tensor-core throughput and halves bytes streamed. NVFP4 (E2M1 + E4M3 per-16-value block scales) adds ~2x more capacity per GPU at ~99% recovery — adopted per-model as evals pass.</td></tr>
+<tr><td>Dense long-context reasoners</td><td>FP8; FP4 only eval-gated</td><td>FP8 (largest lever at long context)</td><td>Reasoning chains are the accuracy canary; FP4 known to mis-sample low-entropy tokens in long traces. Trade throughput for a wider safety margin here.</td></tr>
+<tr><td>Draft models</td><td>INT4/Q4 weight-only</td><td>FP16/FP8</td><td>Draft errors are verified away by the target model — they cost acceptance rate, not correctness — so quantize maximally.</td></tr>
+</table>
+<p>The <b>quality gate</b> is a CI pipeline per artifact: perplexity delta, task evals (GSM8K/code/domain suites), and a long-chain reasoning suite, with per-tenant minimum-quality floors. Calibration data mirrors production traffic distribution. The heterogeneous fleet requires one artifact per hardware target (CUDA/Hopper, CUDA/Blackwell with native FP4, ROCm/CDNA3 FP8) built from a single source checkpoint — the gate runs per artifact, since numerics differ across backends.</p>
+<div class="evidence">FP16→Q4_K_M on the local harness: 3.2x smaller, decode 75.8→176.5 tok/s (2.3x, tracking the bandwidth ratio), TPOT 13.2→5.7 ms — while an 8-question exact-match gate scored identically (6/8) at all precisions. Quantization decisions are made by gates, not vibes.</div>
+
+<h3>1.2 Compute utilization and memory access (SRAM vs. HBM)</h3>
+<p>Attention is the long-context bottleneck because naïve implementations materialize the O(N²) score matrix in HBM. We standardize on <b>IO-aware fused kernels</b> (FlashAttention-3 class on H200, FA-4 class on B300, composable-kernel/Triton equivalents on CDNA3): tile Q/K/V into SRAM, compute with online softmax, never write scores to HBM — trading recomputation for memory traffic, a strict win for a memory-bound op. On Blackwell, the bottleneck moves — tensor-core FLOPS grew ~2.25x over Hopper while exponential-unit throughput did not — so B300 kernels emulate softmax exponentials on FMA units (the FlashAttention-4 approach) rather than serializing on SFUs.</p>
+<ul>
+  <li><b>Prefill vs. decode asymmetry:</b> prefill runs high-arithmetic-intensity GEMMs (compute-bound, benefits from large tiles and FP8/FP4 tensor cores); decode streams weights + KV at batch-depth-1 intensity (bandwidth-bound, benefits from quantization, batching, CUDA-graph-captured steps to eliminate launch overhead). Kernels and schedulers treat the phases separately — the basis of §2.2.</li>
+  <li><b>Long context:</b> paged KV layouts (block size tuned per architecture), FP8 KV halving both capacity and read bandwidth, chunked prefill to bound each iteration's compute, and — as models supporting it arrive — DSA-style trainable sparse attention (top-k token selection via a lightweight indexer) as the O(L·k) endgame for 500K+ contexts.</li>
+  <li><b>MoE:</b> fused dispatch/expert/combine kernels with DeepEP-style all-to-all, overlapping communication with expert compute; FP8 grouped GEMMs for expert FFNs.</li>
+</ul>
+<div class="evidence">TTFT at a 2,000-word prompt is quantization-invariant on the harness (0.43–0.45 s at FP16/Q8/Q4) while decode speeds differ 2.3x — direct confirmation that prefill is compute-bound and decode bandwidth-bound, and that the two phases deserve different optimizations.</div>
+
+<h2>2. Distributed Inference &amp; Execution Orchestration</h2>
+
+<h3>2.1 Parallelism: the interconnect decides, not the model</h3>
+<p>Each strategy is defined by its communication pattern, which dictates placement given fast intra-node links (NVLink ~900 GB/s, xGMI) and a 25 Gbps (~3 GB/s) inter-node VPC:</p>
+<table>
+<tr><th>Strategy</th><th>Communication</th><th>Placement rule</th><th>Cost</th></tr>
+<tr><td>Tensor (TP)</td><td>All-reduce, 2x per layer, on the critical path of every token</td><td>Intra-node only (TP ≤ 8)</td><td>Best latency; catastrophic over 25 Gbps; diminishing returns with degree</td></tr>
+<tr><td>Expert (EP)</td><td>All-to-all, 2x per MoE layer</td><td>Intra-node; wide-EP only over RDMA fabric</td><td>Load imbalance → EPLB-style hot-expert replication</td></tr>
+<tr><td>Pipeline (PP)</td><td>Point-to-point activations (small)</td><td>The cross-node axis; tolerates 25 Gbps</td><td>Pipeline bubbles; adds TTFT</td></tr>
+<tr><td>Data (DP)</td><td>None (independent replicas)</td><td>Cross-node scale-out</td><td>Full memory per replica; requires cache-aware routing (§2.2)</td></tr>
+</table>
+<p><b>Per model class:</b> 200B+ MoE → EP=8 for experts + TP for attention within an 8x slug; FP8/FP4 weights keep it single-node, DP replicas across nodes; PP only if a model exceeds node memory. Dense reasoners → TP=2–8 intra-node; MI300X/MI325X's 192–256 GB HBM is the strategic asset here — models that need TP=8 on H200 fit at TP=2–4, avoiding inter-node traffic entirely. Draft models → single-GPU DP, colocated with their targets. Rejected alternative: cross-node TP "for simplicity of one big pool" — a two-order-of-magnitude bandwidth mismatch that no scheduler can hide.</p>
+
+<h3>2.2 Efficiency primitives: disaggregation, distributed KV, continuous batching</h3>
+<p><b>Disaggregated prefill/decode.</b> Colocated, an arriving long prefill stalls every streaming decode — p99 ITL is held hostage to other tenants' TTFT. We split the fleet into a prefill pool (compute-optimized, large token batches) and a decode pool (bandwidth/KV-capacity-optimized), with KV handoff over RDMA (NIXL-style connectors) — never the 25 Gbps VPC, where transfer would erase the win. Production data (vLLM on GB300, DeepSeek-V3.2) shows disaggregation holding TPOT under 60 ms at batch 256 where colocated serving exceeds 80 ms, at the cost of more hardware for the same nominal throughput — buying SLO stability, i.e., goodput. Where RDMA isn't available, the fallback is <b>chunked prefill</b> on colocated nodes (bounded prefill slices interleaved with decode steps), which removes most ITL interference without any KV transfer. Pool sizing is dynamic (role reassignment on traffic-mix shift), avoiding stranded capacity.</p>
+<p><b>Distributed KV-cache and prefix caching.</b> KV is managed as a tiered, cluster-level resource: GPU HBM (hot) → pinned host DRAM → local NVMe → cluster KV pool over the RDMA fabric (Mooncake/LMCache pattern), content-addressed by prefix-block hash and <b>namespaced per tenant</b> — cross-tenant sharing is disabled because cache-hit timing is an information side-channel in a multi-tenant cloud. This is what breaks latency compounding in agentic loops: each turn re-sends the growing conversation, and a prefix hit converts that prefill into an incremental cost. The critical companion is <b>cache-aware routing</b> — with DP replicas, random/round-robin routing silently destroys hit rates (≈1/N), so the router scores replicas on prefix overlap, queue depth, and load, with sticky-session affinity and load-based override.</p>
+<div class="evidence">Two-replica PoC, 8 concurrent multi-turn sessions: switching round-robin → cache-aware routing cut turns-2+ mean TTFT 110→34 ms (3.2x) and p95 260→36 ms (~7x) — policy change only, no engine or hardware change. Consistent with Google's production report for GKE Inference Gateway (35% TTFT, 2x p95) and llm-d's endpoint-picker design. Prefix caching itself measured 26–48x TTFT on hits.</div>
+<p><b>Continuous batching</b> runs everywhere: iteration-level admission (a finished sequence's slot is refilled next step), chunked prefill interleaving, and KV-pressure-triggered preemption with recompute-or-swap. The batching depth knob is set per pool from the SLO: deepen batches until p99 ITL approaches the tenant bound, then scale out. Multi-node coordination stays in the router/scheduler layer (llm-d-style) rather than inside engines — engines stay simple and per-node; global intelligence lives where global state lives.</p>
+
+<h2>3. Infrastructure Resiliency &amp; Observability</h2>
+
+<h3>3.1 Cold start: make the bytes already there, or cheap to move</h3>
+<p>A 200 GB model over the 25 Gbps VPC is ~80 s of pure transfer — prohibitive for scale-to-zero. The mitigation is a <b>hierarchy plus streaming</b>: (1) node OS page cache — free and dominant for warm nodes; (2) local NVMe artifact cache with LRU over model popularity; (3) <b>peer-to-peer fetch</b> from other nodes over the 400G RoCE fabric (~5 s for 200 GB) — the fleet itself is the CDN; (4) object storage as origin only. Loaders stream and begin serving before full load completes (layer-ordered loading), and snapshot/restore of initialized processes (GPU memory pooling for frequently-cycled serverless models) removes framework init from the path. Two multiplicative levers: quantized artifacts halve or quarter the bytes (FP8/FP4 is <i>also</i> a cold-start optimization), and the router biases placement toward nodes whose caches already hold the model — the same cache-aware principle as §2.2 applied to weights.</p>
+<div class="evidence">Identical model load: 7.4 s from cold disk vs 0.6 s from warm page cache (12x) on the harness — cache placement dominates cold start before any exotic engineering.</div>
+
+<h3>3.2 Telemetry: percentiles or it didn't happen</h3>
+<p>Three instrumentation layers feed one KPI model:</p>
+<ul>
+  <li><b>Kernel level</b> (sampled, not always-on): Nsight Systems/Compute and rocprof traces on canary replicas; roofline placement per kernel (achieved vs. peak bandwidth/FLOPS); attention vs. GEMM vs. communication time split. Catches regressions like a kernel silently falling off the fused path after an engine upgrade.</li>
+  <li><b>Engine level</b> (always-on, per request): streaming timestamps → <b>TTFT</b> (decomposed into queue wait + prefill), <b>TPOT</b>, and the full <b>ITL distribution</b> (mean TPOT hides the p99 stalls users feel); plus queue depth, batch occupancy, prefix-cache hit rate, preemption count, KV utilization.</li>
+  <li><b>Fleet level:</b> tokens/sec/dollar per model/hardware/tenant (measured cost including idle amortization, not list-price math), SLO burn rate, and cache-hit-weighted routing quality.</li>
+</ul>
+<p><b>Guaranteeing KPIs:</b> SLOs are contracts per tenant tier (e.g., p99 TTFT &lt; 500 ms, p99 ITL &lt; 50 ms interactive; relaxed for batch). The autoscaling and admission signal is <b>SLO headroom</b>, not GPU utilization — utilization rewards saturation, which is precisely what violates tails. Benchmarking discipline: Poisson arrivals at production prompt/output-length mixes (never back-to-back sweeps, which overstate throughput ~2x), goodput-under-SLO as the reported number, and continuous canary replays so every kernel, quantization, or engine change lands with a before/after KPI delta attached. KPIs conflict by construction — deeper batching raises tokens/sec/dollar and degrades ITL — so goodput is the single objective that resolves the conflict, and it is the number this endpoint is operated on.</p>
+
+<div class="footnote">
+<b>Phased adoption</b> (each phase independently valuable): 1 — cache-aware routing + prefix caching (software-only, weeks; 3–7x multi-turn TTFT, PoC-proven). 2 — FP8 defaults + speculative decoding (EAGLE-3/MTP; 2–3x TPOT, lossless via verification). 3 — cluster KV pooling + P/D disaggregation over RDMA (tail SLOs at high utilization). 4 — NVFP4 on B300 + sparse attention (next 2–4x cost curve).
+<b>Key references:</b> PagedAttention (SOSP'23) · DistServe (OSDI'24) · Sarathi-Serve (OSDI'24) · Mooncake (FAST'25) · FlashAttention-3/4 · DeepSeek open-infra (FlashMLA, DeepEP, EPLB) · NVFP4 (NVIDIA/Red Hat evals) · llm-d (CNCF) · GKE Inference Gateway production results. Full bibliography and raw benchmark data in companion repo (<i>inference-trends-2026.md</i>, <i>demo/results/</i>).
+</div>
+
+</body>
+</html>
