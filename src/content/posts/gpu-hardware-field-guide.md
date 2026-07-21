@@ -4,6 +4,7 @@ pubDatetime: 2026-07-21T00:00:00Z
 description: "A comprehensive, from-zero guide to GPU hardware buzzwords: HBM, memory bandwidth, FP8/FP4, NVLink, H100 vs H200 vs B200 vs GB200, NVL72 racks, AMD Instinct, TPUs, Groq, Cerebras — plus what to actually run in a homelab and why datacenter GPU infra is genuinely hard."
 tags:
   - blog
+ogImage: ../images/gpu-field-guide-og.png
 ---
 
 Last week I ended up at a table with a bunch of inference engineers. Within five minutes the conversation was flying: _"GB200s are great but the NVL72 power draw is brutal"_, _"H100s are fine if you're memory-bound anyway"_, _"MI300X gives you 192 gigs, CUDA moat or not."_ I did the thing we all do — nodded slowly, said "yeah, bandwidth," and quietly realized I couldn't have defined half those words with a gun to my head.
