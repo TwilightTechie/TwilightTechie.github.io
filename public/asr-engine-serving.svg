@@ -99,10 +99,10 @@
 
   <g class="moving" filter="url(#glow)">
     <circle r="8" fill="#38bdf8"><animateMotion dur="3.2s" repeatCount="indefinite"><mpath href="#livePath"/></animateMotion></circle>
-    <circle r="8" fill="#38bdf8"><animateMotion dur="3.2s" begin="1.05s" repeatCount="indefinite"><mpath href="#livePath"/></animateMotion></circle>
-    <circle r="9" fill="#f97316"><animateMotion dur="2.8s" begin=".4s" repeatCount="indefinite"><mpath href="#batchPathA"/></animateMotion></circle>
-    <circle r="9" fill="#fb923c"><animateMotion dur="2.8s" begin="1.4s" repeatCount="indefinite"><mpath href="#batchPathB"/></animateMotion></circle>
-    <circle r="7" fill="#34d399"><animateMotion dur="2s" begin=".8s" repeatCount="indefinite"><mpath href="#textPath"/></animateMotion></circle>
+    <circle r="8" fill="#38bdf8" opacity="0"><set attributeName="opacity" to="1" begin="1.05s"/><animateMotion dur="3.2s" begin="1.05s" repeatCount="indefinite"><mpath href="#livePath"/></animateMotion></circle>
+    <circle r="9" fill="#f97316" opacity="0"><set attributeName="opacity" to="1" begin=".4s"/><animateMotion dur="2.8s" begin=".4s" repeatCount="indefinite"><mpath href="#batchPathA"/></animateMotion></circle>
+    <circle r="9" fill="#fb923c" opacity="0"><set attributeName="opacity" to="1" begin="1.4s"/><animateMotion dur="2.8s" begin="1.4s" repeatCount="indefinite"><mpath href="#batchPathB"/></animateMotion></circle>
+    <circle r="7" fill="#34d399" opacity="0"><set attributeName="opacity" to="1" begin=".8s"/><animateMotion dur="2s" begin=".8s" repeatCount="indefinite"><mpath href="#textPath"/></animateMotion></circle>
   </g>
 
   <rect x="50" y="505" width="1115" height="95" rx="18" fill="#121d2c" stroke="#33465b"/>
