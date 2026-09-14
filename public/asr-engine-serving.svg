@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+  <title id="title">Animated ASR engine serving architecture</title>
+  <desc id="desc">Audio chunks enter separate live and offline queues. A deadline-aware scheduler creates batches, sends them to replicated ASR engines, and streams partial transcripts.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101827"/>
+      <stop offset="1" stop-color="#172033"/>
+    </linearGradient>
+    <linearGradient id="engine" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1f3147"/>
+      <stop offset="1" stop-color="#182638"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#60758d"/>
+    </marker>
+    <path id="livePath" d="M150 180 C235 180 230 238 325 238 L500 238"/>
+    <path id="batchPathA" d="M610 238 C700 238 680 170 790 170"/>
+    <path id="batchPathB" d="M610 238 C700 238 680 330 790 330"/>
+    <path id="textPath" d="M985 250 C1040 250 1050 250 1100 250"/>
+  </defs>
+
+  <style>
+    .label { font: 600 21px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #f8fafc; }
+    .small { font: 500 15px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #9fb0c3; }
+    .tiny { font: 500 13px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #7890a8; }
+    .path { fill: none; stroke: #60758d; stroke-width: 3; marker-end: url(#arrow); }
+    .wave { fill: none; stroke: #38bdf8; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 14 10; animation: wave 1.1s linear infinite; }
+    .engine-box { fill: url(#engine); stroke: #38bdf8; stroke-width: 2; animation: enginePulse 2.4s ease-in-out infinite; }
+    .queue-bar { animation: queue 1.8s ease-in-out infinite; transform-box: fill-box; transform-origin: left; }
+    .queue-later { animation-delay: .4s; }
+    .token { animation: token 3s ease-in-out infinite; }
+    .token-2 { animation-delay: .55s; }
+    .token-3 { animation-delay: 1.1s; }
+    @keyframes wave { to { stroke-dashoffset: -24; } }
+    @keyframes enginePulse { 0%,100% { stroke-opacity:.45; } 50% { stroke-opacity:1; filter:url(#glow); } }
+    @keyframes queue { 0%,100% { transform:scaleX(.35); opacity:.45; } 50% { transform:scaleX(1); opacity:1; } }
+    @keyframes token { 0%,15%,100% { opacity:.15; } 32%,82% { opacity:1; } }
+    @media (prefers-reduced-motion: reduce) {
+      .moving { display:none; }
+      .wave, .engine-box, .queue-bar, .token { animation:none; opacity:1; }
+    }
+  </style>
+
+  <rect width="1200" height="650" rx="28" fill="url(#bg)"/>
+  <text x="55" y="58" class="label">ASR ENGINE — TWO CLOCKS, ONE SCHEDULER</text>
+  <text x="55" y="88" class="small">live audio chases a deadline · offline audio chases throughput</text>
+
+  <rect x="50" y="125" width="165" height="112" rx="18" fill="#16263a" stroke="#38bdf8" stroke-width="2"/>
+  <text x="78" y="155" class="small" fill="#38bdf8">LIVE STREAM</text>
+  <path class="wave" d="M77 190 L90 177 L104 206 L119 165 L134 209 L149 180 L164 194 L188 184"/>
+  <text x="78" y="220" class="tiny">20–160 ms chunks</text>
+
+  <rect x="50" y="335" width="165" height="112" rx="18" fill="#241d30" stroke="#f97316" stroke-width="2"/>
+  <text x="78" y="366" class="small" fill="#fb923c">OFFLINE JOB</text>
+  <rect x="78" y="390" width="108" height="10" rx="5" fill="#493248"/>
+  <rect x="78" y="390" width="74" height="10" rx="5" fill="#f97316" class="queue-bar"/>
+  <rect x="78" y="410" width="108" height="10" rx="5" fill="#493248"/>
+  <rect x="78" y="410" width="92" height="10" rx="5" fill="#f97316" class="queue-bar queue-later"/>
+
+  <path class="path" d="M215 180 C255 180 255 215 300 215"/>
+  <path class="path" d="M215 390 C255 390 255 300 300 300"/>
+
+  <rect x="300" y="145" width="310" height="220" rx="22" fill="#1b2638" stroke="#f8fafc" stroke-opacity=".35" stroke-width="2"/>
+  <text x="338" y="185" class="label">DEADLINE-AWARE SCHEDULER</text>
+  <text x="338" y="218" class="small">priority queue</text>
+  <rect x="338" y="234" width="205" height="14" rx="7" fill="#294158"/>
+  <rect x="338" y="234" width="162" height="14" rx="7" fill="#38bdf8" class="queue-bar"/>
+  <text x="338" y="279" class="small">duration buckets</text>
+  <rect x="338" y="295" width="50" height="18" rx="5" fill="#f97316"/>
+  <rect x="396" y="295" width="77" height="18" rx="5" fill="#fb923c"/>
+  <rect x="481" y="295" width="101" height="18" rx="5" fill="#fdba74"/>
+  <text x="338" y="340" class="tiny">frame budget · sticky stream ID · backpressure</text>
+
+  <path class="path" d="M610 215 C690 215 695 177 775 177"/>
+  <path class="path" d="M610 300 C690 300 695 337 775 337"/>
+
+  <rect x="775" y="120" width="220" height="135" rx="20" class="engine-box"/>
+  <text x="812" y="158" class="label">ASR REPLICA 0</text>
+  <text x="812" y="190" class="small">encoder batch</text>
+  <text x="812" y="219" class="small">decoder + state</text>
+
+  <rect x="775" y="280" width="220" height="135" rx="20" class="engine-box" style="animation-delay:.8s"/>
+  <text x="812" y="318" class="label">ASR REPLICA 1</text>
+  <text x="812" y="350" class="small">encoder batch</text>
+  <text x="812" y="379" class="small">decoder + state</text>
+
+  <path class="path" d="M995 187 C1040 187 1040 244 1080 244"/>
+  <path class="path" d="M995 347 C1040 347 1040 272 1080 272"/>
+
+  <rect x="1060" y="205" width="105" height="105" rx="18" fill="#132c2b" stroke="#34d399" stroke-width="2"/>
+  <text x="1080" y="240" class="tiny token">hello</text>
+  <text x="1080" y="265" class="tiny token token-2">hello world</text>
+  <text x="1080" y="290" class="tiny token token-3">final ✓</text>
+
+  <g class="moving" filter="url(#glow)">
+    <circle r="8" fill="#38bdf8"><animateMotion dur="3.2s" repeatCount="indefinite"><mpath href="#livePath"/></animateMotion></circle>
+    <circle r="8" fill="#38bdf8"><animateMotion dur="3.2s" begin="1.05s" repeatCount="indefinite"><mpath href="#livePath"/></animateMotion></circle>
+    <circle r="9" fill="#f97316"><animateMotion dur="2.8s" begin=".4s" repeatCount="indefinite"><mpath href="#batchPathA"/></animateMotion></circle>
+    <circle r="9" fill="#fb923c"><animateMotion dur="2.8s" begin="1.4s" repeatCount="indefinite"><mpath href="#batchPathB"/></animateMotion></circle>
+    <circle r="7" fill="#34d399"><animateMotion dur="2s" begin=".8s" repeatCount="indefinite"><mpath href="#textPath"/></animateMotion></circle>
+  </g>
+
+  <rect x="50" y="505" width="1115" height="95" rx="18" fill="#121d2c" stroke="#33465b"/>
+  <text x="78" y="540" class="small">ENGINE OPTIMIZES</text>
+  <text x="78" y="570" class="tiny">frames/batch</text>
+  <text x="235" y="570" class="tiny">first partial</text>
+  <text x="405" y="570" class="tiny">RTFx</text>
+  <text x="520" y="570" class="tiny">active streams</text>
+  <text x="710" y="570" class="tiny">state memory</text>
+  <text x="885" y="570" class="tiny">WER by language</text>
+</svg>
